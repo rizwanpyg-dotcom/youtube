@@ -2,7 +2,7 @@
 # Secrets come only from environment variables injected by GitHub Actions Secrets.
 
 channel:
-  name_working: "Collapse Ledger"        # placeholder; final name chosen before launch
+  name_working: "Fallen Markets"         # channel @fallenmarkets
   language: en
   audience: international, English-speaking, 18-45, curious about money/tech history
   niche: Economic History & Tech Collapses

@@ -43,7 +43,7 @@
        "scene": {"type": "chart", "spec": {"series": "NASDAQCOM", "start": "1995-01-01", "end": "2004-12-31", "title": "Nasdaq Composite", "subtitle": "Daily close, 1995 to 2004", "highlights": [{"date": "2000-03-10", "label": "Peak"}, {"date": "2002-10-09", "label": "Trough"}], "source": "FRED, series NASDAQCOM"}}},
       {"text": "Every boom tells itself that this time is different. The numbers from 2000 suggest it rarely is.",
        "claims": ["C1"],
-       "scene": {"type": "card", "spec": {"style": "title", "eyebrow": "Collapse Ledger", "big": "This time is different", "small": "Sources and data in the description"}}}
+       "scene": {"type": "card", "spec": {"style": "title", "eyebrow": "Fallen Markets", "big": "This time is different", "small": "Sources and data in the description"}}}
     ]}
   ]
 }

@@ -6,7 +6,7 @@ import sqlite3
 import time
 from pathlib import Path
 
-from .. import sources
+from .. import config, sources
 from ..log import get as get_log
 from . import captions, charts, ffmpeg as ff, frames, music
 
@@ -97,20 +97,21 @@ def mux(video: Path, audio: Path, out: Path, burn_ass: Path | None = None, fonts
 def register_assets(conn: sqlite3.Connection, video_id: int, scenes: list[dict], voice: str,
                     music_path: Path, fonts_dir: Path) -> None:
     """Licence register: every visual and audio element of the video gets a row."""
+    owner = config.get().get("channel.name_working", "Channel owner")
     conn.execute("DELETE FROM assets WHERE video_id=?", (video_id,))
     rows = []
     for s in scenes:
         if s["type"] == "chart":
             rows.append(("chart", "generated", sources.fred_url(s["spec"]["series"]), f"scene_{s['index']:03d}",
-                         "Original", None, "Collapse Ledger",
+                         "Original", None, owner,
                          f"Chart data: Federal Reserve Bank of St. Louis, FRED series {s['spec']['series']}"))
         elif s["type"] == "card":
             rows.append(("image", "generated", None, f"scene_{s['index']:03d}", "Original", None,
-                         "Collapse Ledger", None))
+                         owner, None))
     rows.append(("voice", "generated", "https://huggingface.co/hexgrad/Kokoro-82M", "narration.wav", "Apache-2.0",
                  "https://www.apache.org/licenses/LICENSE-2.0", "hexgrad (Kokoro-82M model)",
                  f"AI narration: Kokoro-82M, voice {voice}"))
-    rows.append(("music", "generated", None, music_path.name, "Original", None, "Collapse Ledger",
+    rows.append(("music", "generated", None, music_path.name, "Original", None, owner,
                  "Music: original generative score"))
     for name, lic in (("ArchivoBlack-Regular.ttf", "OFL-1.1"), ("Inter.ttf", "OFL-1.1")):
         rows.append(("font", "brand", "https://github.com/google/fonts", name, lic,

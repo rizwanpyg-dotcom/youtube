@@ -73,7 +73,7 @@ Until Google approves this audit, API uploads are locked to **Private**, so the 
 
 1. Open the audit and quota form linked from Google's YouTube API documentation. Search for "YouTube API Services audit and quota extension form". [REPORTED location: support.google.com/youtube/contact/yt_api_form. Check that the link comes from Google's own docs.]
 2. Describe it honestly: a single-channel, owner-only tool that uploads the owner's own original documentaries and reads that channel's analytics. No third-party users.
-3. **Privacy policy URL:** `https://YOUR-USERNAME.github.io/channel-engine/privacy.html`. It's published by the first pipeline run (Step 6).
+3. **Privacy policy URL:** `https://rizwanpyg-dotcom.github.io/youtube/privacy.html`. It's published by the first pipeline run (Step 6).
 4. Approval isn't guaranteed and its timing is unknown. When it's approved, comment `/mode review_window` on the `[control]` issue.
 
 ## Step 6: First run and checks (15 min)
@@ -83,7 +83,7 @@ Until Google approves this audit, API uploads are locked to **Private**, so the 
 3. Read the script and claims table in the issue, then comment `/approve`, `/changes <what to fix>` or `/reject <reason>`.
 4. The next scheduled run (every 4 hours, or run it manually) renders the video. The run takes up to ~60 min [ESTIMATE; measure the first one]. A **Ready to upload** issue links to the download.
 5. Upload in YouTube Studio by following `UPLOAD_CHECKLIST.md` in the package. Then comment `/published <video id>` on that issue. The video id is the 11 characters after `youtu.be/`.
-6. Open the dashboard at `https://YOUR-USERNAME.github.io/channel-engine/`.
+6. Open the dashboard at `https://rizwanpyg-dotcom.github.io/youtube/`.
 
 ## Step 7: Prove it works with the PC off
 
