@@ -75,6 +75,19 @@ def _nums(text: str) -> list[float]:
     return fact_check.numbers_in(text)
 
 
+_WORD_NUMS = {w: i for i, w in enumerate(
+    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen "
+    "sixteen seventeen eighteen nineteen twenty".split())}
+_WORD_NUMS.update({"thirty": 30, "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80,
+                   "ninety": 90, "hundred": 100, "thousand": 1000, "dozen": 12})
+
+
+def _claim_nums(text: str) -> list[float]:
+    """Numbers a claim supports: digits plus spelled-out numbers ("ten days" supports "10 Days")."""
+    words = re.findall(r"[a-z]+", text.lower())
+    return _nums(text) + [float(_WORD_NUMS[w]) for w in words if w in _WORD_NUMS]
+
+
 def _covered(n: float, allowed: list[float]) -> bool:
     return any(abs(n - a) < 1e-9 for a in allowed)
 
@@ -102,7 +115,7 @@ def script_gate(conn: sqlite3.Connection, video_id: int, series: dict | None = N
         allowed: list[float] = []
         for ref in refs:
             if ref in claims:
-                allowed += _nums(claims[ref]["text"])
+                allowed += _claim_nums(claims[ref]["text"])
         for s in textutil.sentences(p["text"]):
             nums = _nums(s)
             if (nums or '"' in s or "“" in s) and not refs:

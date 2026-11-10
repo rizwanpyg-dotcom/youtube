@@ -98,7 +98,10 @@ def stage_research(conn, video_id) -> dict:
             raise RuntimeError("short research gate failed: " + "; ".join(gate.failures()))
         return stats
     result = fact_check.run(conn, video_id)  # network errors raise here and are retried with backoff
-    gate = qc.research_gate(conn, video_id)
+    cfg = config.get()
+    gate = qc.research_gate(conn, video_id,
+                            min_claims=int(cfg.get("quality.min_research_claims", 12)),
+                            min_publishers=int(cfg.get("quality.min_research_publishers", 2)))
     if not gate.passed:
         # Not enough verifiable evidence is a property of the topic, not a transient error:
         # retire it at once instead of re-fetching the same sources three times.

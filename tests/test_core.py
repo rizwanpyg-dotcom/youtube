@@ -348,3 +348,21 @@ def test_relevant_excerpt_skips_cover_pages():
           "of GDP, and the IMF approved a stand-by arrangement. " + ("Annex tables. " * 400)
     ex = fact_check.relevant_excerpt(txt, fact_check._content_words("Greece deficit IMF stand-by"), 600)
     assert "12.7 percent" in ex and len(ex) <= 700
+
+
+def test_inline_citation_markers_are_not_spoken_or_counted():
+    from ytengine.agents import scriptwriter, fact_check
+    script = {"acts": [{"name": "A", "paragraphs": [{
+        "text": "In January 1719 the bank was renamed the Banque Royale [C13]. Notes became legal tender (C22, C7).",
+        "claims": ["C1"], "scene": {"type": "card", "spec": {"big": "1719 [C13]"}}}]}]}
+    p = scriptwriter.paragraphs(script)[0]
+    assert "C13" not in p["text"] and "C22" not in p["text"] and "[" not in p["text"]
+    assert p["claims"] == ["C1", "C13", "C22", "C7"]
+    assert p["scene"]["spec"]["big"] == "1719"
+    assert "C13" not in scriptwriter.narration_text(script)
+    assert fact_check.numbers_in("ref C13 and B2B") == []
+
+
+def test_spelled_out_claim_numbers_support_digits():
+    from ytengine.agents import qc
+    assert 10.0 in qc._claim_nums("Law closed the bank for ten days.")

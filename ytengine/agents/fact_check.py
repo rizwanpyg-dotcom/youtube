@@ -22,6 +22,7 @@ from ..log import get as get_log
 log = get_log("fact_check")
 
 MAX_DOCS = 14
+MAX_DOCS_PER_PUBLISHER = 2
 MAX_REFS_TRIED = 45
 REF_BUDGET_S = 240      # cap on reference fetching per Wikipedia article
 FETCH_WORKERS = 6
@@ -50,22 +51,32 @@ def gather(conn: sqlite3.Connection, video_id: int, plan: dict) -> Corpus:
     corpus = Corpus()
     # Keywords may be phrases ("Assignat hyperinflation"); match their individual words.
     kw = textutil.keywords(" ".join(plan.get("keywords", [])))
+    candidates = []   # (tier, -relevance, rank, url, doc)
     for title in plan.get("wikipedia", []):
         doc = sources.wikipedia(title)
         corpus.docs[doc.url] = doc
         refs = [u for u in sources.rank_references(sources.wikipedia_references(title)) if sources.tier(u) <= 2]
         fetched = _fetch_parallel(refs[:MAX_REFS_TRIED])
-        for url in refs[:MAX_REFS_TRIED]:  # keep rank order (tier first), not completion order
+        for rank, url in enumerate(refs[:MAX_REFS_TRIED]):
             d = fetched.get(url)
-            if d is None or len(corpus.docs) >= MAX_DOCS:
+            if d is None:
                 continue
             text_l = d.text.lower()
             hits = sum(1 for k in kw if k in text_l)
             if len(d.text) < 1500 or (kw and hits < 2):
                 continue
-            if any(sources.original_url(u) == sources.original_url(url) for u in corpus.docs):
-                continue
-            corpus.docs[url] = d
+            candidates.append((d.tier, -hits, rank, url, d))
+    # Verification needs DIFFERENT publishers, so cap each publisher and prefer tier, then relevance.
+    per_pub: dict[str, int] = {}
+    for _tier, _neg_hits, _rank, url, d in sorted(candidates, key=lambda c: c[:3]):
+        if len(corpus.docs) >= MAX_DOCS:
+            break
+        if per_pub.get(d.publisher, 0) >= MAX_DOCS_PER_PUBLISHER:
+            continue
+        if any(sources.original_url(u) == sources.original_url(url) for u in corpus.docs):
+            continue
+        corpus.docs[url] = d
+        per_pub[d.publisher] = per_pub.get(d.publisher, 0) + 1
     for url in plan.get("extra_urls", []):
         try:
             d = sources.fetch_document_or_archive(url)
@@ -182,7 +193,7 @@ Datasets:
 
 
 # ------------------------------------------------------------------ verify (deterministic)
-_NUM = re.compile(r"(?<![A-Za-z])\$?\d[\d,]*(?:\.\d+)?")
+_NUM = re.compile(r"(?<![A-Za-z0-9_])\$?\d[\d,]*(?:\.\d+)?")  # not digits inside C13, B2B
 
 
 def numbers_in(text: str) -> list[float]:

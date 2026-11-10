@@ -76,6 +76,9 @@ brand:
 quality:
   min_verified_claim_ratio: 1.0          # every factual sentence must cite a verified claim
   min_sources_per_claim: 2               # or 1 tier-1 primary source
+  min_research_claims: 12                # verified claims needed before a long-form script is written
+  min_research_publishers: 2             # distinct tier-1/2 publishers behind the verified claims
+                                         # (each claim already needs 2 publishers or 1 tier-1 source)
   max_similarity_to_past_scripts: 0.20   # word-trigram Jaccard
   banned_phrases_file: config/banned_phrases.txt
   min_qc_score: 0.85

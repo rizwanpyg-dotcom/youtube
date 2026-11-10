@@ -9,6 +9,7 @@ Output structure (stored in scripts.outline_json):
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 
 from .. import config, db, llm, textutil
@@ -129,11 +130,28 @@ Claims:
     return cur.lastrowid
 
 
+# Inline citation markers the model sometimes writes into narration: "[C13]", "[C3, C7]", "(C4)".
+_INLINE_REF = re.compile(r"\s*[\[(]\s*(C\d+(?:\s*[,;]\s*C\d+)*)\s*[\])]")
+
+
+def _strip_refs(text: str) -> tuple[str, list[str]]:
+    refs = [r.strip() for m in _INLINE_REF.finditer(text or "") for r in re.split(r"[,;]", m.group(1))]
+    return _INLINE_REF.sub("", text or ""), refs
+
+
 def paragraphs(script: dict) -> list[dict]:
+    """Paragraphs with inline [Cn] markers moved out of the spoken/on-screen text into "claims"
+    (the voice must never read "C13", and QC must not see its digits as numbers)."""
     out = []
     for ai, act in enumerate(script["acts"]):
         for pi, p in enumerate(act["paragraphs"]):
-            out.append({**p, "act": act["name"], "act_index": ai, "first_in_act": pi == 0})
+            text, inline = _strip_refs(p.get("text", ""))
+            claims = list(dict.fromkeys(list(p.get("claims") or []) + inline))
+            scene = dict(p.get("scene") or {})
+            if isinstance(scene.get("spec"), dict):
+                scene["spec"] = {k: (_strip_refs(v)[0] if isinstance(v, str) else v) for k, v in scene["spec"].items()}
+            out.append({**p, "text": text, "claims": claims, "scene": scene,
+                        "act": act["name"], "act_index": ai, "first_in_act": pi == 0})
     return out
 
 
@@ -143,11 +161,13 @@ def narration_text(script: dict) -> str:
 
 def render_body(script: dict) -> str:
     lines = []
-    for act in script["acts"]:
-        lines.append(f"## {act['name']}")
-        for p in act["paragraphs"]:
-            refs = " ".join(f"[{c}]" for c in p["claims"])
-            lines.append(f"[SCENE: {p['scene']['type']}] {p['text']} {refs}".strip())
+    current = None
+    for p in paragraphs(script):
+        if p["act"] != current:
+            current = p["act"]
+            lines.append(f"## {current}")
+        refs = " ".join(f"[{c}]" for c in p["claims"])
+        lines.append(f"[SCENE: {p['scene'].get('type', '?')}] {p['text']} {refs}".strip())
     return "\n\n".join(lines)
 
 

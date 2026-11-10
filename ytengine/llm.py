@@ -110,6 +110,8 @@ class Gemini(Provider):
         )
         if r.status_code == 429:
             raise _RateLimited(r.headers.get("Retry-After"))
+        if r.status_code in (500, 503):  # "model is experiencing high demand": wait and retry
+            raise _RateLimited(r.headers.get("Retry-After") or "45")
         if r.status_code == 404:
             raise _ModelGone(f"gemini model {self.model} not available to this key (HTTP 404)")
         if r.status_code >= 400:
