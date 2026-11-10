@@ -8,7 +8,7 @@
 | GitHub Pages (dashboard) | $0 | public repos | 1 small site | [VERIFIED free] |
 | GitHub Releases (DB backups) | $0 | 2 GB per file | < 50 MB total | free |
 | Gemini API, free tier | $0 | requests/day per model (cut in Dec 2025) [REPORTED] | ~30–80 requests per long video | capped in config below the free limits |
-| GitHub Models (fallback LLM) | $0 | ~50–150 requests/day [REPORTED] | only if Gemini is unavailable | |
+| ~~GitHub Models (fallback LLM)~~ | — | retired by GitHub on 2026-07-30 [VERIFIED, GitHub changelog] | removed from the engine | |
 | YouTube Data API v3 | $0 | 10,000 units/day [VERIFIED default] | ≤ ~2,100 units per upload day; self-cap 8,000 | |
 | YouTube Analytics API | $0 | separate quota | ~1 request per video per day | |
 | Kokoro TTS, FFmpeg, Python libraries, fonts | $0 | open source (Apache-2.0 / LGPL-GPL / OFL) | n/a | |

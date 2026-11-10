@@ -13,7 +13,6 @@ concurrency:
 permissions:
   contents: write   # push the state branch
   issues: write     # approval / package / failure notifications
-  models: read      # GitHub Models free tier (fallback LLM) via GITHUB_TOKEN
 
 jobs:
   cycle:

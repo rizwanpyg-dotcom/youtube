@@ -77,7 +77,7 @@ Date: 2026-11-09. Environment: Windows 11 PC, 12 logical CPUs, Python 3.13, FFmp
 
 ## 5. Phase 4 tests still to run after deployment (checklist)
 - [ ] First `pipeline` run on GitHub completes; note the runtime and the "Workflow runs" CPU/peak-MB figures on the dashboard.
-- [ ] Gemini free tier works from your account, or the fallback to GitHub Models engages.
+- [ ] Gemini free tier works from your account (the run log shows which model answered).
 - [ ] A script approval issue arrives by email; `/approve` from your phone works.
 - [ ] Package artifact downloads; manual upload; `/published <id>` recorded.
 - [ ] `maintenance → watchdog` run is green; `analytics` run is green once a video is public.

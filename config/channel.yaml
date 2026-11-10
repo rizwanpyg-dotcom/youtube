@@ -32,16 +32,21 @@ launch:
 llm:
   # Tried in order. Every provider has a self-imposed daily cap below its free limit.
   # No Google Cloud billing account is ever linked, so paid usage can't happen.
+  # Model ids checked against Google's model list on 2026-11-10 (all marked "Stable").
+  # If Google retires them, the "auto" entry discovers a current Flash model for this key.
   providers:
     - name: gemini
-      model: gemini-2.5-flash
+      model: gemini-3.6-flash
       daily_request_cap: 200
     - name: gemini
-      model: gemini-2.5-flash-lite
-      daily_request_cap: 800
-    - name: github_models
-      model: openai/gpt-4o-mini
-      daily_request_cap: 120
+      model: gemini-3.5-flash-lite
+      daily_request_cap: 600
+    - name: gemini
+      model: gemini-3.1-flash-lite
+      daily_request_cap: 600
+    - name: gemini
+      model: auto
+      daily_request_cap: 200
   temperature_script: 0.8
   temperature_factual: 0.1
 

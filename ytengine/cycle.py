@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime, timedelta, timezone
 import traceback
 
 from . import config, db, llm
@@ -43,9 +44,11 @@ def run(conn, budget_s: int = TIME_BUDGET_S) -> dict:
         if topics.backlog(conn) < 10 and _llm_available() and _hours_since(last) > 20:
             try:
                 summary["topics"] = topics.research(conn)
-            except Exception as e:  # LLM quota or network: try again next cycle
+                db.set_setting(conn, "last_topic_research", db.utcnow())
+            except Exception as e:  # LLM quota or network: retry in ~4 h (next cycle or two), not 20 h
                 summary["errors"].append(f"topic research: {e}")
-            db.set_setting(conn, "last_topic_research", db.utcnow())
+                retry_at = datetime.now(timezone.utc) - timedelta(hours=17)
+                db.set_setting(conn, "last_topic_research", retry_at.strftime("%Y-%m-%dT%H:%M:%SZ"))
         summary["calendar"] = topics.fill_calendar(conn)
         summary["new_shorts"] = shorts.create_children(conn, int(config.get().get("schedule.shorts.per_week", 2)))
 

@@ -15,6 +15,8 @@ Labels: **[VERIFIED]**, **[REPORTED]**, **[ASSUMPTION]** (to test in Phase 4), *
 
 ---
 
+> **Update 2026-11-10:** GitHub Models was retired by GitHub on 30 July 2026 and has been removed. The LLM router now uses Gemini only: configured stable models, then automatic discovery of a current Flash model if Google retires them.
+
 ## 1. Design principles
 
 1. **$0 and no card.** Every component is free. No Google Cloud billing account is ever linked, so paid usage can't happen by accident.

@@ -1,12 +1,14 @@
 """LLM router: free-tier providers in order, JSON-only outputs, validation, fallback.
 
 Providers:
-  gemini         Google AI Studio free tier (GEMINI_API_KEY; no billing account linked)
-  github_models  GitHub Models free tier (GITHUB_TOKEN with models:read)
+  gemini         Google AI Studio free tier (GEMINI_API_KEY; no billing account linked).
+                 Configured models are tried in order; if Google retires them (HTTP 404), the
+                 "auto" entry asks the API which Flash models this key can use and picks one.
   fixture        replays recorded JSON from tests/fixtures/<set>/ (offline tests and demos)
 
-Select with env YT_LLM: "auto" (default; config order), "gemini", "github_models",
-or "fixture:<set_name>".
+(GitHub Models was the fallback until GitHub retired it on 2026-07-30; removed.)
+
+Select with env YT_LLM: "auto" (default; config order), "gemini", or "fixture:<set_name>".
 """
 from __future__ import annotations
 
@@ -108,6 +110,8 @@ class Gemini(Provider):
         )
         if r.status_code == 429:
             raise _RateLimited(r.headers.get("Retry-After"))
+        if r.status_code == 404:
+            raise _ModelGone(f"gemini model {self.model} not available to this key (HTTP 404)")
         if r.status_code >= 400:
             raise LLMError(f"gemini HTTP {r.status_code}: {redact(r.text[:300])}")
         data = r.json()
@@ -117,29 +121,51 @@ class Gemini(Provider):
             raise LLMError(f"gemini: no content ({data.get('promptFeedback')})")
 
 
-class GitHubModels(Provider):
-    name = "github_models"
-    URL = "https://models.github.ai/inference/chat/completions"
+class GeminiAuto(Gemini):
+    """Fallback when every configured model is retired: list the models this key can use."""
+    LIST_URL = "https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000"
+    SKIP = ("tts", "live", "image", "embedding", "audio", "omni", "banana", "veo", "imagen", "robotics",
+            "computer-use", "thinking", "learnlm", "gemma")
+    _cache: list[str] | None = None
 
-    def available(self) -> bool:
-        return bool(config.Config.secret("GITHUB_TOKEN"))
+    def __init__(self, cap: int = 100, exclude: tuple[str, ...] = ()):
+        super().__init__("auto", cap)
+        self.exclude = set(exclude)
+
+    @classmethod
+    def candidates(cls) -> list[str]:
+        if cls._cache is None:
+            r = requests.get(cls.LIST_URL, timeout=30,
+                             headers={"x-goog-api-key": config.Config.secret("GEMINI_API_KEY") or ""})
+            if r.status_code >= 400:
+                raise LLMError(f"gemini model list HTTP {r.status_code}: {redact(r.text[:200])}")
+            ids = [m["name"].removeprefix("models/") for m in r.json().get("models", [])
+                   if "generateContent" in m.get("supportedGenerationMethods", [])]
+            cls._cache = rank_gemini_models(ids, cls.SKIP)
+            log.info("gemini models available to this key: %s", cls._cache[:8])
+        return cls._cache
 
     def call(self, task: str, prompt: str, temperature: float) -> str:
-        r = requests.post(
-            self.URL,
-            headers={"Authorization": f"Bearer {config.Config.secret('GITHUB_TOKEN')}",
-                     "Content-Type": "application/json"},
-            json={"model": self.model, "temperature": temperature,
-                  "response_format": {"type": "json_object"},
-                  "messages": [{"role": "system", "content": SYSTEM_PROMPT},
-                               {"role": "user", "content": prompt}]},
-            timeout=180,
-        )
-        if r.status_code == 429:
-            raise _RateLimited(r.headers.get("Retry-After"))
-        if r.status_code >= 400:
-            raise LLMError(f"github_models HTTP {r.status_code}: {redact(r.text[:300])}")
-        return r.json()["choices"][0]["message"]["content"]
+        last: Exception | None = None
+        for model in [m for m in self.candidates() if m not in self.exclude][:4]:
+            self.model = model
+            try:
+                text = super().call(task, prompt, temperature)
+                log.info("gemini auto-selected model %s; update llm.providers in config/channel.yaml", model)
+                return text
+            except _ModelGone as e:
+                last = e
+        self.model = "auto"
+        raise LLMError(f"no usable gemini flash model found ({last})")
+
+
+def rank_gemini_models(ids: list[str], skip: tuple[str, ...] = GeminiAuto.SKIP) -> list[str]:
+    """Flash models first (stable before preview/experimental), newest version first."""
+    def version(mid: str) -> float:
+        m = re.search(r"gemini-(\d+(?:\.\d+)?)", mid)
+        return float(m.group(1)) if m else 0.0
+    keep = [i for i in ids if "flash" in i and not any(k in i for k in skip) and not i.endswith("-latest")]
+    return sorted(keep, key=lambda i: (("preview" in i or "exp" in i), -version(i), "lite" not in i))
 
 
 class Fixture(Provider):
@@ -157,6 +183,10 @@ class Fixture(Provider):
         return f.read_text(encoding="utf-8")
 
 
+class _ModelGone(LLMError):
+    """The model id was retired or isn't offered to this key; retrying it is pointless."""
+
+
 class _RateLimited(Exception):
     def __init__(self, retry_after: str | None):
         super().__init__("rate limited")
@@ -172,8 +202,14 @@ def providers() -> list[Provider]:
     for p in config.get().get("llm.providers", []):
         if choice not in ("auto", p["name"]):
             continue
-        cls = {"gemini": Gemini, "github_models": GitHubModels}[p["name"]]
-        out.append(cls(p["model"], int(p.get("daily_request_cap", 100))))
+        if p["name"] != "gemini":
+            log.warning("unknown LLM provider %r in config ignored", p["name"])
+            continue
+        if p["model"] == "auto":
+            out.append(GeminiAuto(int(p.get("daily_request_cap", 100)),
+                                  tuple(x.model for x in out if x.name == "gemini")))
+        else:
+            out.append(Gemini(p["model"], int(p.get("daily_request_cap", 100))))
     return out
 
 
@@ -193,11 +229,16 @@ def complete_json(conn: sqlite3.Connection | None, task: str, prompt: str, schem
                 text = prov.call(task, prompt, temperature)
                 obj = _parse_json(text)
                 validate(obj, schema)
+                label = f"{prov.name}:{prov.model}"  # auto-discovery may have picked a model
                 log.info("%s ok via %s", task, label)
                 return obj, label
             except quota.QuotaExceeded as e:
                 errors.append(str(e))
                 break  # next provider
+            except _ModelGone as e:
+                errors.append(f"{label}: {e}")
+                log.warning("%s: %s; trying the next model", task, e)
+                break
             except _RateLimited as e:
                 wait = min(e.retry_after, 90)
                 log.warning("%s rate-limited on %s; waiting %.0fs", task, label, wait)
@@ -208,4 +249,4 @@ def complete_json(conn: sqlite3.Connection | None, task: str, prompt: str, schem
                 if prov.name == "fixture":
                     break
                 time.sleep(2 * (attempt + 1))
-    raise LLMError(f"all providers failed for {task}: " + " | ".join(errors[-4:]))
+    raise LLMError(f"all providers failed for {task}: " + " | ".join(e[:220] for e in errors[-6:]))

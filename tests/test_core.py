@@ -226,3 +226,62 @@ def test_captions_chunking():
     out = cues([{"text": "word " * 30, "start": 0.0, "end": 6.0}])
     assert all(len(line) <= 42 for _, _, t in out for line in t.split("\n"))
     assert abs(out[-1][1] - 6.0) < 1e-6
+
+
+# ------------------------------------------------------------------ LLM model fallback
+def test_rank_gemini_models_prefers_stable_newest_flash():
+    from ytengine.llm import rank_gemini_models
+    ids = ["gemini-2.5-flash", "gemini-3.6-flash", "gemini-3.8-flash-tts", "gemini-3-flash-preview",
+           "gemini-3.5-flash-lite", "gemini-embedding-2", "gemini-3.1-pro-preview", "gemini-flash-latest"]
+    ranked = rank_gemini_models(ids)
+    assert ranked[0] == "gemini-3.6-flash"
+    assert "gemini-3.8-flash-tts" not in ranked and "gemini-embedding-2" not in ranked
+    assert "gemini-3.1-pro-preview" not in ranked and "gemini-flash-latest" not in ranked
+    assert ranked.index("gemini-3-flash-preview") > ranked.index("gemini-2.5-flash")
+
+
+def test_retired_model_falls_through_to_auto(monkeypatch):
+    """A 404 on a configured model is not retried; 'auto' discovers a working model."""
+    from ytengine import llm
+    monkeypatch.setenv("GEMINI_API_KEY", "AQ.test-key-not-real-0000000000")
+    monkeypatch.setenv("YT_LLM", "auto")
+    calls = []
+
+    class Resp:
+        def __init__(self, code, payload):
+            self.status_code, self._p, self.headers, self.text = code, payload, {}, json.dumps(payload)
+
+        def json(self):
+            return self._p
+
+    def fake_post(url, **kw):
+        model = url.split("/models/")[1].split(":")[0]
+        calls.append(model)
+        if model == "gemini-9-flash":
+            return Resp(200, {"candidates": [{"content": {"parts": [{"text": '{"ok": true}'}]}}]})
+        return Resp(404, {"error": {"code": 404}})
+
+    def fake_get(url, **kw):
+        return Resp(200, {"models": [
+            {"name": "models/gemini-9-flash", "supportedGenerationMethods": ["generateContent"]},
+            {"name": "models/gemini-9-flash-tts", "supportedGenerationMethods": ["generateContent"]}]})
+
+    monkeypatch.setattr(llm.requests, "post", fake_post)
+    monkeypatch.setattr(llm.requests, "get", fake_get)
+    monkeypatch.setattr(llm.GeminiAuto, "_cache", None)
+    monkeypatch.setattr(llm.time, "sleep", lambda s: None)
+    obj, label = llm.complete_json(None, "t", "p", {"type": "object", "required": ["ok"]})
+    assert obj == {"ok": True} and label == "gemini:gemini-9-flash"
+    configured = [m for m in calls if m != "gemini-9-flash"]
+    assert len(configured) == len(set(configured)), "a retired model was retried"
+
+
+def test_failed_topic_research_retries_within_hours(conn, monkeypatch):
+    from ytengine import cycle, db as dbm
+    from ytengine.agents import topics as tp
+    monkeypatch.setattr(cycle, "_llm_available", lambda: True)
+    monkeypatch.setattr(tp, "research", lambda c: (_ for _ in ()).throw(RuntimeError("all providers failed")))
+    summary = cycle.run(conn, budget_s=5)
+    assert any("topic research" in e for e in summary["errors"])
+    hours = cycle._hours_since(dbm.get_setting(conn, "last_topic_research"))
+    assert 16 < hours < 18   # gate is >20 h, so research is retried ~3-4 h later, not 20 h
