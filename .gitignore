@@ -25,3 +25,4 @@ __pycache__/
 .claude/
 site/
 backups/
+*.state-base

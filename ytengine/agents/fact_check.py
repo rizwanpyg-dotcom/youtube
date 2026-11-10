@@ -128,18 +128,48 @@ CLAIMS_SCHEMA = {
 }
 
 
-def extract_prompt(topic: str, angle: str, corpus: Corpus) -> str:
-    blocks = []
+def relevant_excerpt(text: str, focus: set[str], budget: int) -> str:
+    """The most on-topic passages of a document (in original order) instead of just its start:
+    long reports put the substance far from the cover page."""
+    if len(text) <= budget:
+        return text
+    sents = textutil.sentences(text)
+    windows = [" ".join(sents[i:i + 3]) for i in range(0, len(sents), 3)]
+    scored = sorted(range(len(windows)),
+                    key=lambda i: -len(focus & {_stem(w) for w in textutil.keywords(windows[i])}))
+    keep, used = set(), 0
+    for i in scored:
+        if used + len(windows[i]) > budget:
+            continue
+        keep.add(i)
+        used += len(windows[i]) + 1
+    return "\n".join(windows[i] for i in sorted(keep))
+
+
+def extract_prompt(topic: str, angle: str, corpus: Corpus, keywords: list[str] | None = None) -> str:
+    focus = _content_words(" ".join([topic, angle] + list(keywords or [])))
+    blocks, pubs = [], {}
     for url, d in corpus.docs.items():
-        blocks.append(f"### SOURCE {url}\nPublisher: {d.publisher} (tier {d.tier})\n{d.text[:DOC_CHARS_IN_PROMPT]}")
+        pubs.setdefault(d.publisher, []).append(url)
+        budget = DOC_CHARS_IN_PROMPT * (2 if d.publisher == "wikipedia.org" else 1)
+        blocks.append(f"### SOURCE {url}\nPublisher: {d.publisher} (tier {d.tier})\n"
+                      f"{relevant_excerpt(d.text, focus, budget)}")
     series = "\n".join(f"- FRED {s}: {v[0][0]}..{v[-1][0]}, {len(v)} observations" for s, v in corpus.series.items())
     return f"""Topic: {topic}
 Angle: {angle}
+Publishers available: {", ".join(f"{p} ({len(u)} source{'s' if len(u) > 1 else ''})" for p, u in pubs.items())}
 
-Extract 15-30 atomic, checkable factual claims useful for a documentary on this topic.
-For EVERY claim give evidence items. Text evidence: {{"kind":"text","url":<source url exactly as given>,
+Extract 25-40 atomic, checkable factual claims useful for a documentary on this topic.
+
+VERIFICATION RULE (claims that fail it are discarded automatically):
+a claim counts only if it is supported by TWO DIFFERENT PUBLISHERS, or by one government / central-bank /
+IMF / academic (tier 1) source. So prefer the central facts that several sources state (dates, amounts,
+who did what, causes and consequences) over details only one article mentions. For EVERY claim give an
+evidence item from each publisher that states it (two or more when possible).
+
+Text evidence: {{"kind":"text","url":<source url exactly as given>,
 "quote":<a passage copied VERBATIM from that source, 8-60 words>,"stance":"supports"|"contradicts"}}.
-Prefer claims supported by 2+ different publishers. Numeric data evidence from datasets:
+Numeric data evidence from datasets:
 {{"kind":"data_point","series":<id>,"date":"YYYY-MM-DD","value":<number>}} or
 {{"kind":"data_change","series":<id>,"from":"YYYY-MM-DD","to":"YYYY-MM-DD","pct":<number>}}.
 Copy quotes exactly; do not paraphrase inside "quote". Every number in a claim's text must appear in its evidence.
@@ -207,6 +237,55 @@ def verify_evidence(ev: dict, corpus: Corpus) -> tuple[bool, str, str | None, st
     return False, f"unknown evidence kind {kind}", None, json.dumps(ev)
 
 
+# ------------------------------------------------------------------ automatic second source
+CORROBORATE_MIN_WORDS = 4      # claims with fewer content words are too vague to match safely
+CORROBORATE_OVERLAP = 0.6      # share of the claim's content words that must appear in the passage
+
+
+def _stem(w: str) -> str:
+    return w[:-1] if len(w) > 4 and w.endswith("s") else w
+
+
+def _content_words(text: str) -> set[str]:
+    return {_stem(w) for w in textutil.keywords(text) if not w.isdigit()}
+
+
+def _passages(corpus: Corpus) -> list[tuple[str, str, set[str], list[float]]]:
+    """(url, passage, content words, numbers) for every 2-sentence window, cached on the corpus."""
+    cached = getattr(corpus, "_passage_index", None)
+    if cached is None:
+        cached = []
+        for url, d in corpus.docs.items():
+            sents = textutil.sentences(d.text)
+            for i in range(len(sents)):
+                p = " ".join(sents[i:i + 2])
+                if 40 <= len(p) <= 900:
+                    nums = numbers_in(p) + [float(x) for x in re.findall(r"\d+", p)]
+                    cached.append((url, p, _content_words(p), nums))
+        corpus._passage_index = cached
+    return cached
+
+
+def corroborate(claim_text: str, corpus: Corpus, exclude_publishers: set[str]) -> tuple[str, str] | None:
+    """Find a passage from ANOTHER publisher that states the same fact: every number in the claim
+    appears in it and most of the claim's content words do. Returns (url, passage) or None.
+    This is the second source Gemini didn't cite; the passage is real text from that document."""
+    words = _content_words(claim_text)
+    if len(words) < CORROBORATE_MIN_WORDS:
+        return None
+    nums = numbers_in(claim_text)
+    best = None
+    for url, passage, pwords, pnums in _passages(corpus):
+        if sources.publisher(url) in exclude_publishers:
+            continue
+        if any(not any(abs(n - e) < 1e-9 for e in pnums) for n in nums):
+            continue
+        overlap = len(words & pwords) / len(words)
+        if overlap >= CORROBORATE_OVERLAP and (best is None or overlap > best[0]):
+            best = (overlap, url, passage)
+    return (best[1], best[2]) if best else None
+
+
 def _numbers_supported(claim_text: str, evidence_texts: list[str], data_values: list[float]) -> list[float]:
     """Return claim numbers NOT found in evidence (empty list = all supported)."""
     ev_nums = []
@@ -251,6 +330,16 @@ def verify_claims(conn: sqlite3.Connection, video_id: int, proposed: list[dict],
             rows.append((url, stance, ev_text))
 
         missing = _numbers_supported(c["text"], good_texts, data_vals)
+        corroborated = None
+        if (not missing and good_texts and not contradict and not tier1 and len(support_pubs) < 2
+                and not (c["type"] == "quote" and best_tier <= 2)):
+            corroborated = corroborate(c["text"], corpus, support_pubs)
+            if corroborated:
+                url2, passage = corroborated
+                support_pubs.add(sources.publisher(url2))
+                tier1 = tier1 or sources.tier(url2) == 1
+                good_texts.append(passage)
+                rows.append((url2, "supports", passage))
         if missing:
             status, why = "rejected", f"numbers not in evidence: {missing}"
         elif not good_texts:
@@ -258,7 +347,8 @@ def verify_claims(conn: sqlite3.Connection, video_id: int, proposed: list[dict],
         elif contradict:
             status, why = "conflicting", "sources disagree"
         elif tier1 or len(support_pubs) >= 2:
-            status, why = "verified", f"publishers={sorted(support_pubs)}"
+            status, why = "verified", f"publishers={sorted(support_pubs)}" + (
+                " (second source found automatically)" if corroborated else "")
         elif c["type"] == "quote" and best_tier <= 2:
             # A direct quotation is "X said Y, as reported by Z": one verified tier-1/2
             # report suffices, and the script must attribute it (checked by QC).
@@ -292,7 +382,7 @@ def run(conn: sqlite3.Connection, video_id: int) -> dict:
     corpus = gather(conn, video_id, plan)
     db.set_stage(conn, video_id, "researched")
     proposed, provider = llm.complete_json(conn, "claims_extract",
-                                           extract_prompt(topic["title"], topic["angle"] or "", corpus),
+                                           extract_prompt(topic["title"], topic["angle"] or "", corpus, plan.get("keywords")),
                                            CLAIMS_SCHEMA, temperature=0.1)
     stats = verify_claims(conn, video_id, proposed["claims"], corpus)
     stats.update(documents=len(corpus.docs), series=list(corpus.series), provider=provider,

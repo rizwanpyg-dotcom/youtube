@@ -325,3 +325,26 @@ def test_repair_reopens_bug_rejected_topics(conn):
     conn.execute("UPDATE topics SET status='rejected', rejection_reason='insufficient evidence: y' WHERE slug='a'")
     cycle._repair_2026_11_10(conn)  # runs once only
     assert conn.execute("SELECT status FROM topics WHERE slug='a'").fetchone()[0] == "rejected"
+
+
+def test_corroborate_finds_second_publisher_and_respects_numbers():
+    from ytengine import sources
+    from ytengine.agents import fact_check
+    c = fact_check.Corpus()
+    c.docs["https://www.nytimes.com/a"] = sources.Document(
+        "https://www.nytimes.com/a", "nytimes.com", 2, "x",
+        "Unrelated opening line here. The Columbia Trust Company merged with the Irving Bank of New York in "
+        "February 1923, forming the Irving Bank-Columbia Trust Company. Other news follows.")
+    claim = "In February 1923, Columbia Trust Company merged with Irving Bank of New York."
+    hit = fact_check.corroborate(claim, c, {"wikipedia.org"})
+    assert hit and hit[0] == "https://www.nytimes.com/a"
+    assert fact_check.corroborate(claim.replace("1923", "1924"), c, {"wikipedia.org"}) is None  # number must match
+    assert fact_check.corroborate(claim, c, {"nytimes.com"}) is None                          # must be ANOTHER publisher
+
+
+def test_relevant_excerpt_skips_cover_pages():
+    from ytengine.agents import fact_check
+    txt = ("Cover page. Table of contents. " * 400) + "Greece revised its 2009 budget deficit to 12.7 percent " \
+          "of GDP, and the IMF approved a stand-by arrangement. " + ("Annex tables. " * 400)
+    ex = fact_check.relevant_excerpt(txt, fact_check._content_words("Greece deficit IMF stand-by"), 600)
+    assert "12.7 percent" in ex and len(ex) <= 700
