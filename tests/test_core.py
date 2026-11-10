@@ -205,6 +205,13 @@ def test_redaction(monkeypatch):
     assert "AIzaSy" not in out and "ghp_" not in out
 
 
+def test_redaction_auth_key_unregistered():
+    """AI Studio auth keys (AQ.) are redacted by pattern even when not a registered secret."""
+    from ytengine.log import redact
+    out = redact("HTTP 401 with header x-goog-api-key: AQ.Ab8RN6Ixyz0123456789abcdefGHIJ-kl_mn end")
+    assert "AQ.Ab8" not in out and "[REDACTED]" in out and out.endswith(" end")
+
+
 # ------------------------------------------------------------------ TTS normalisation
 def test_speakable():
     from ytengine.agents.voice import speakable

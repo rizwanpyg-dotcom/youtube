@@ -16,7 +16,8 @@ from . import config
 
 # Token-shaped strings redacted even if they're not a registered secret.
 _PATTERNS = [
-    re.compile(r"AIza[0-9A-Za-z\-_]{30,}"),                 # Google API keys
+    re.compile(r"AIza[0-9A-Za-z\-_]{30,}"),                 # Google standard API keys
+    re.compile(r"AQ\.[0-9A-Za-z\-_\.]{20,}"),               # Google auth keys (AI Studio, from May 2026)
     re.compile(r"ya29\.[0-9A-Za-z\-_\.]+"),                 # Google OAuth access tokens
     re.compile(r"1//[0-9A-Za-z\-_]{20,}"),                  # Google refresh tokens
     re.compile(r"gh[pousr]_[0-9A-Za-z]{30,}"),              # GitHub tokens

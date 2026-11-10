@@ -35,7 +35,7 @@ git push -u origin main
 ## Step 2: Free AI key: Gemini (10 min)
 
 1. Go to <https://aistudio.google.com/apikey> and sign in with a Google account.
-2. Click **Create API key** and choose to create it in a new project.
+2. Click **Create API key** and choose to create it in a new project. Since 28 May 2026, AI Studio creates **auth keys** that start with `AQ.` (older standard keys started with `AIza`). Both work; the engine sends the key in the `x-goog-api-key` header, as Google's documentation shows.
 3. **Don't set up billing** or "upgrade". The free tier needs no card. With no billing account, paid usage is impossible.
 4. If AI Studio says your region isn't supported, skip this step. The system automatically falls back to **GitHub Models** (free, using the repository's built-in token; nothing to set up). Tell me if this happens, because quality and limits differ.
 5. In GitHub: **Settings → Secrets and variables → Actions → New repository secret**:
