@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import os
 import time
 from datetime import datetime, timedelta, timezone
 import traceback
@@ -41,7 +42,8 @@ def run(conn, budget_s: int = TIME_BUDGET_S) -> dict:
             return summary
 
         last = db.get_setting(conn, "last_topic_research", "2000-01-01T00:00:00Z")
-        if topics.backlog(conn) < 10 and _llm_available() and _hours_since(last) > 20:
+        force = os.environ.get("YT_FORCE_RESEARCH") == "1"
+        if topics.backlog(conn) < 10 and _llm_available() and (force or _hours_since(last) > 20):
             try:
                 summary["topics"] = topics.research(conn)
                 db.set_setting(conn, "last_topic_research", db.utcnow())

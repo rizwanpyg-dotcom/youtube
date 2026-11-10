@@ -252,3 +252,20 @@ def test_dashboard_export_is_sanitised(conn, tmp_path, monkeypatch):
     assert len(data["pipeline"][0]["last_error"]) <= 300
     assert (tmp_path / "site" / "index.html").exists()
     assert sum(c["amount_usd"] for c in data["costs"]) == 0
+
+
+def test_research_command_and_force_flag(conn, monkeypatch):
+    from ytengine import control, cycle, db as dbm
+    from ytengine.agents import topics as tp
+    dbm.set_setting(conn, "last_topic_research", dbm.utcnow())
+    reply = control.handle_comment(conn, 1, "[control] Owner commands", "/research", "OWNER", "me")
+    assert "next pipeline cycle" in reply
+    assert dbm.get_setting(conn, "last_topic_research").startswith("2000")
+    # force flag bypasses the once-a-day gate
+    dbm.set_setting(conn, "last_topic_research", dbm.utcnow())
+    ran = []
+    monkeypatch.setattr(cycle, "_llm_available", lambda: True)
+    monkeypatch.setattr(tp, "research", lambda c: ran.append(1) or {"added": 0, "skipped": []})
+    monkeypatch.setenv("YT_FORCE_RESEARCH", "1")
+    cycle.run(conn, budget_s=5)
+    assert ran == [1]

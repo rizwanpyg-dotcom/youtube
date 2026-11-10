@@ -40,7 +40,7 @@ python -m venv .venv
 The sample needs the Kokoro model files in `models/`. The cloud setup step downloads them automatically; locally, see `.github/actions/setup/action.yml` for the two URLs.
 
 ## Owner commands (comment on GitHub issues; only the repo owner is obeyed)
-`/approve` · `/changes <notes>` · `/reject <reason>` · `/published <youtube-id>` · `/retry` · `/pause` · `/resume` · `/mode package|review_window|auto` · `/approval on|off` · `/status`
+`/approve` · `/changes <notes>` · `/reject <reason>` · `/published <youtube-id>` · `/retry` · `/pause` · `/resume` · `/mode package|review_window|auto` · `/approval on|off` · `/status` · `/research`
 
 ## Layout
 ```

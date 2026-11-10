@@ -147,6 +147,9 @@ def handle_comment(conn: sqlite3.Connection, issue_number: int, issue_title: str
         rows = conn.execute("SELECT id, stage, status, working_title FROM videos ORDER BY id DESC LIMIT 10").fetchall()
         return "\n".join(["| id | stage | status | title |", "|---|---|---|---|"] +
                          [f"| {r['id']} | {r['stage']} | {r['status']} | {r['working_title'] or ''} |" for r in rows])
+    if cmd == "/research":
+        db.set_setting(conn, "last_topic_research", "2000-01-01T00:00:00Z", by=actor)
+        return "Topic research will run on the next pipeline cycle (if the topic backlog is below 10)."
     if vid is None:
         return "This command needs to be used on a `[video:N]` issue."
     if cmd == "/approve":

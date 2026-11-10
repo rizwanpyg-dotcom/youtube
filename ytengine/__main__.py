@@ -138,7 +138,8 @@ def _ensure_control_issue(conn, notify) -> None:
         "Comment here to control the whole pipeline (only the repository owner is obeyed):\n\n"
         "- `/pause`: stop producing and publishing\n- `/resume`: start again\n"
         "- `/mode package|review_window|auto`: change publish mode\n"
-        "- `/approval on|off`: require script approval before rendering\n- `/status`: summary of recent videos\n\n"
+        "- `/approval on|off`: require script approval before rendering\n- `/status`: summary of recent videos\n"
+        "- `/research`: run topic research on the next cycle\n\n"
         "Video-specific commands (`/approve`, `/reject`, `/changes`, `/published`, `/retry`) go on that video's issue.",
         ["control"])
     if num:

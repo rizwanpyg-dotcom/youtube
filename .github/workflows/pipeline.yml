@@ -3,7 +3,12 @@ name: pipeline
 on:
   schedule:
     - cron: "17 */4 * * *"        # every 4 hours (UTC)
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      force_research:
+        description: "Force topic research now (ignore the once-a-day limit)"
+        type: boolean
+        default: false
 
 # Only one job may write the database at a time (all DB-writing workflows share this group).
 concurrency:
@@ -21,6 +26,7 @@ jobs:
     env:
       PYTHONUNBUFFERED: "1"
       YT_DB_PATH: youtube_automation.db
+      YT_FORCE_RESEARCH: ${{ inputs.force_research && '1' || '' }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
