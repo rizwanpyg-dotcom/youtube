@@ -1,0 +1,120 @@
+{
+  "claims": [
+    {"ref": "C1", "type": "number",
+     "text": "On March 10, 2000, the Nasdaq Composite index peaked at 5,048.62.",
+     "evidence": [
+       {"kind": "text", "url": "https://en.wikipedia.org/wiki/Dot-com_bubble", "quote": "On Friday March 10, 2000, the NASDAQ Composite stock market index peaked at 5,048.62."},
+       {"kind": "text", "url": "https://www.wired.com/2010/03/0310nasdaq-bust/", "quote": "The Nasdaq hits 5,048.62, the high-water mark of the dot-com boom."},
+       {"kind": "data_point", "series": "NASDAQCOM", "date": "2000-03-10", "value": 5048.62}
+     ]},
+    {"ref": "C2", "type": "number",
+     "text": "At its peak the Nasdaq was more than double its value of a year earlier, up about 110%.",
+     "evidence": [
+       {"kind": "text", "url": "https://www.wired.com/2010/03/0310nasdaq-bust/", "quote": "On March 10, the Nasdaq Composite index peaked, more than doubling its value of a year before."},
+       {"kind": "data_change", "series": "NASDAQCOM", "from": "1999-03-10", "to": "2000-03-10", "pct": 109.8}
+     ]},
+    {"ref": "C3", "type": "number",
+     "text": "From January 1995 to its March 2000 peak, the Nasdaq Composite rose by about 579%.",
+     "evidence": [
+       {"kind": "data_change", "series": "NASDAQCOM", "from": "1995-01-03", "to": "2000-03-10", "pct": 579.0}
+     ]},
+    {"ref": "C4", "type": "number",
+     "text": "In 1999 alone, the Nasdaq Composite rose 85.6%.",
+     "evidence": [
+       {"kind": "text", "url": "https://en.wikipedia.org/wiki/Dot-com_bubble", "quote": "Even though the Nasdaq Composite rose 85.6% and the S&P 500 rose 19.5% in 1999"},
+       {"kind": "data_change", "series": "NASDAQCOM", "from": "1998-12-31", "to": "1999-12-31", "pct": 85.6}
+     ]},
+    {"ref": "C5", "type": "number",
+     "text": "By October 2002 the Nasdaq had fallen to 1,114.11, a loss of 78% from its peak.",
+     "evidence": [
+       {"kind": "text", "url": "https://www.theguardian.com/technology/2005/mar/10/newmedia.media", "quote": "By October 2002, it had plunged to 1114.11, a total loss of 78% against its peak."},
+       {"kind": "data_point", "series": "NASDAQCOM", "date": "2002-10-09", "value": 1114.11},
+       {"kind": "data_change", "series": "NASDAQCOM", "from": "2000-03-10", "to": "2002-10-09", "pct": -77.9}
+     ]},
+    {"ref": "C6", "type": "number",
+     "text": "On April 14, 2000, the Nasdaq fell 9.7% in a single day, ending a week in which it lost 25.3%.",
+     "evidence": [
+       {"kind": "data_change", "series": "NASDAQCOM", "from": "2000-04-13", "to": "2000-04-14", "pct": -9.7},
+       {"kind": "data_change", "series": "NASDAQCOM", "from": "2000-04-07", "to": "2000-04-14", "pct": -25.3},
+       {"kind": "text", "url": "https://en.wikipedia.org/wiki/Dot-com_bubble", "quote": "On Friday, April 14, 2000, the Nasdaq Composite index fell 9%, ending a week in which it fell 25%."}
+     ]},
+    {"ref": "C7", "type": "event",
+     "text": "Many dot-com companies followed the motto \"get big fast\", spending heavily on advertising to build market share.",
+     "evidence": [
+       {"kind": "text", "url": "https://en.wikipedia.org/wiki/Dot-com_bubble", "quote": "spent heavily on advertising and promotions to harness network effects to build market share or mind share as fast as possible, using the mottos \"get big fast\" and \"get large or get lost\""},
+       {"kind": "text", "url": "https://www.cnet.com/news/the-greatest-defunct-web-sites-and-dotcom-disasters/", "quote": "has been the presumption that you needed to get big fast, which worked for Amazon.com and virtually no one else"}
+     ]},
+    {"ref": "C8", "type": "quote",
+     "text": "Gartner analyst Whit Andrews said the presumption that you needed to get big fast \"worked for Amazon.com and virtually no one else\".",
+     "evidence": [
+       {"kind": "text", "url": "https://www.cnet.com/news/the-greatest-defunct-web-sites-and-dotcom-disasters/", "quote": "the presumption that you needed to get big fast, which worked for Amazon.com and virtually no one else,\" commented Gartner analyst Whit Andrews"}
+     ]},
+    {"ref": "C9", "type": "other",
+     "text": "Counts of dot-com advertisers at Super Bowl XXXIV in January 2000 range from 12 to 19, depending on how a dot-com company is defined.",
+     "evidence": [
+       {"kind": "text", "url": "https://en.wikipedia.org/wiki/Dot-com_bubble", "quote": "12 ads of the 61 ads for Super Bowl XXXIV were purchased by dot-coms (sources state ranges from 12 up to 19 companies depending on the definition of dot-com company)"},
+       {"kind": "text", "url": "https://www.fastcompany.com/90453258/20-years-ago-the-dot-coms-took-over-the-super-bowl", "quote": "there were 17 dot-com brands in this big game, compared to two in 1999"},
+       {"kind": "text", "url": "https://www.businessinsider.com/history-of-the-dot-com-bubble-in-photos-2016-2/", "quote": "Things peaked in 2000's Super Bowl XXXIV, which featured commercials from 14 different dot-com companies."}
+     ]},
+    {"ref": "C10", "type": "number",
+     "text": "Exactly 17 dot-com companies advertised at Super Bowl XXXIV.",
+     "evidence": [
+       {"kind": "text", "url": "https://www.fastcompany.com/90453258/20-years-ago-the-dot-coms-took-over-the-super-bowl", "quote": "there were 17 dot-com brands in this big game, compared to two in 1999", "stance": "supports"},
+       {"kind": "text", "url": "https://en.wikipedia.org/wiki/Dot-com_bubble", "quote": "17 dot-com companies bought ad spots the following year for Super Bowl XXXIV", "stance": "supports"},
+       {"kind": "text", "url": "https://www.businessinsider.com/history-of-the-dot-com-bubble-in-photos-2016-2/", "quote": "Things peaked in 2000's Super Bowl XXXIV, which featured commercials from 14 different dot-com companies.", "stance": "contradicts"}
+     ]},
+    {"ref": "C11", "type": "event",
+     "text": "Pets.com, an online pet-supply store founded in 1998, became famous for its sock-puppet mascot.",
+     "evidence": [
+       {"kind": "text", "url": "https://www.businessinsider.com/history-of-the-dot-com-bubble-in-photos-2016-2/", "quote": "Like Pets.com, an online pet-supply store founded in 1998, which became famous for its sock-puppet mascot."},
+       {"kind": "text", "url": "https://www.cnet.com/news/the-greatest-defunct-web-sites-and-dotcom-disasters/", "quote": "Pets.com (1998-2000; precursor to: PetPlanet , et al)"}
+     ]},
+    {"ref": "C12", "type": "date",
+     "text": "On November 9, 2000, Pets.com went out of business, only nine months after its IPO.",
+     "evidence": [
+       {"kind": "text", "url": "https://en.wikipedia.org/wiki/Dot-com_bubble", "quote": "On November 9, 2000, Pets.com, a much-hyped company that had backing from Amazon.com, went out of business only nine months after completing its IPO."},
+       {"kind": "text", "url": "https://www.cnet.com/news/the-greatest-defunct-web-sites-and-dotcom-disasters/", "quote": "A company that goes public and subsequently liquidates itself within a year is a classic example of what the Internet bubble burst did to businesses."},
+       {"kind": "text", "url": "https://www.businessinsider.com/history-of-the-dot-com-bubble-in-photos-2016-2/", "quote": "Pets.com went bust in 2000, and Webvan went belly-up in 2001."}
+     ]},
+    {"ref": "C13", "type": "date",
+     "text": "The grocery-delivery startup Webvan collapsed in 2001.",
+     "evidence": [
+       {"kind": "text", "url": "https://www.businessinsider.com/history-of-the-dot-com-bubble-in-photos-2016-2/", "quote": "Pets.com went bust in 2000, and Webvan went belly-up in 2001."},
+       {"kind": "text", "url": "https://www.cnet.com/news/the-greatest-defunct-web-sites-and-dotcom-disasters/", "quote": "Webvan (1999-2001, precursor to Tesco.com , et al)"}
+     ]},
+    {"ref": "C14", "type": "number",
+     "text": "Webvan raised $396 million from investors including Benchmark Capital, Goldman Sachs and Yahoo.",
+     "evidence": [
+       {"kind": "text", "url": "https://www.businessinsider.com/history-of-the-dot-com-bubble-in-photos-2016-2/", "quote": "Webvan, which raised $396 million from the likes of Benchmark Capital, Goldman Sachs, and Yahoo."}
+     ]},
+    {"ref": "C15", "type": "number",
+     "text": "In January 2000, AOL and Time Warner announced a merger valued at $164 billion.",
+     "evidence": [
+       {"kind": "text", "url": "https://en.wikipedia.org/wiki/Dot-com_bubble", "quote": "On January 10, 2000, America Online, led by Steve Case and Ted Leonsis, announced a merger with Time Warner"},
+       {"kind": "text", "url": "https://www.businessinsider.com/history-of-the-dot-com-bubble-in-photos-2016-2/", "quote": "AOL and Time Warner merged in a massive $164 billion deal"}
+     ]},
+    {"ref": "C16", "type": "number",
+     "text": "In late 1999, the Nasdaq index reached a price-to-earnings ratio of over 200.",
+     "evidence": [
+       {"kind": "text", "url": "https://en.wikipedia.org/wiki/Dot-com_bubble", "quote": "In late 1999, the Nasdaq index reached a price-to-earnings ratio of over 200"}
+     ]},
+    {"ref": "C17", "type": "event",
+     "text": "Dot-com startups such as Boo.com, Pets.com and Toysmart.com went from leaders of a revolution to failed companies.",
+     "evidence": [
+       {"kind": "text", "url": "https://www.theguardian.com/technology/2005/mar/10/newmedia.media", "quote": "companies such as Boo.com, Clickmango.com, Ready2Shop.com, Pets.com, Toysmart.com and many more went from being leaders of a revolution to tombstones"},
+       {"kind": "text", "url": "https://en.wikipedia.org/wiki/Dot-com_bubble", "quote": "many online shopping companies like Pets.com, Webvan, and Boo.com"}
+     ]},
+    {"ref": "C99", "type": "number",
+     "note": "Deliberately fabricated test claim: the fact-checker must reject it.",
+     "text": "Pets.com spent $11.5 million on a single Super Bowl advertisement.",
+     "evidence": [
+       {"kind": "text", "url": "https://www.cnet.com/news/the-greatest-defunct-web-sites-and-dotcom-disasters/", "quote": "Pets.com spent $11.5 million on a single Super Bowl advertisement, a record at the time."}
+     ]},
+    {"ref": "C98", "type": "number",
+     "note": "Deliberately wrong number with a real quote: the number check must reject it.",
+     "text": "By October 2002 the Nasdaq had lost 87% from its peak.",
+     "evidence": [
+       {"kind": "text", "url": "https://www.theguardian.com/technology/2005/mar/10/newmedia.media", "quote": "By October 2002, it had plunged to 1114.11, a total loss of 78% against its peak."}
+     ]}
+  ]
+}

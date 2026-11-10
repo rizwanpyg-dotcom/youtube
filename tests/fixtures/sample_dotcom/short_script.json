@@ -1,0 +1,19 @@
+{
+  "title_working": "The Day the Dot-com Boom Peaked",
+  "acts": [
+    {"name": "Short", "paragraphs": [
+      {"text": "On March 10, 2000, the Nasdaq Composite peaked at 5,048.62. At that moment, the index was worth more than double what it had been a year earlier.",
+       "claims": ["C1", "C2"],
+       "scene": {"type": "card", "spec": {"style": "number", "eyebrow": "March 10, 2000", "big": "5,048.62", "small": "Nasdaq Composite, all-time high of the era"}}},
+      {"text": "Then it broke. By October 2002, the Nasdaq had fallen to 1,114.11, a loss of 78% from its peak.",
+       "claims": ["C5", "C1"],
+       "scene": {"type": "chart", "spec": {"series": "NASDAQCOM", "start": "1999-01-01", "end": "2002-12-31", "title": "Nasdaq", "subtitle": "Daily close, 1999 to 2002", "highlights": [{"date": "2000-03-10", "label": "5,048.62"}, {"date": "2002-10-09", "label": "1,114.11"}], "source": "FRED, NASDAQCOM"}}},
+      {"text": "Pets.com, founded in 1998, became famous for its sock-puppet mascot. On November 9, 2000, it went out of business, only nine months after its IPO.",
+       "claims": ["C11", "C12"],
+       "scene": {"type": "card", "spec": {"style": "title", "eyebrow": "Closed November 9, 2000", "big": "Pets.com", "small": "Nine months after its IPO"}}},
+      {"text": "The motto of the era was get big fast. The full story is on the channel.",
+       "claims": ["C7"],
+       "scene": {"type": "card", "spec": {"style": "statement", "eyebrow": "The full story", "big": "GET BIG FAST", "small": "Watch the documentary on the channel"}}}
+    ]}
+  ]
+}

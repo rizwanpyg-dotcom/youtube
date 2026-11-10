@@ -1,0 +1,70 @@
+name: pipeline
+
+on:
+  schedule:
+    - cron: "17 */4 * * *"        # every 4 hours (UTC)
+  workflow_dispatch: {}
+
+# Only one job may write the database at a time (all DB-writing workflows share this group).
+concurrency:
+  group: state-db
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # push the state branch
+  issues: write     # approval / package / failure notifications
+  models: read      # GitHub Models free tier (fallback LLM) via GITHUB_TOKEN
+
+jobs:
+  cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      PYTHONUNBUFFERED: "1"
+      YT_DB_PATH: youtube_automation.db
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+      YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+      YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+      - uses: ./.github/actions/setup
+      - name: Run one pipeline cycle
+        id: cycle
+        run: python -m ytengine cycle
+        continue-on-error: true      # always save state and publish the dashboard
+      - name: Upload video packages (kept 14 days)
+        if: always() && hashFiles('output/**') != ''
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: package-video-${{ github.run_id }}
+          path: output/
+          retention-days: 14
+      - name: Export dashboard
+        if: always()
+        run: python -m ytengine export-dashboard --out site
+      - name: Save pipeline state
+        if: always()
+        run: bash scripts/state.sh push
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa  # v3.0.1
+        if: always()
+        with:
+          path: site
+      - name: Fail the run if the cycle failed
+        if: steps.cycle.outcome == 'failure'
+        run: exit 1
+
+  dashboard:
+    needs: cycle
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e  # v4.0.5

@@ -1,0 +1,17 @@
+# Runtime (all open source, $0)
+requests>=2.32
+PyYAML>=6.0
+numpy>=1.26
+pillow>=10.4
+matplotlib>=3.8
+soundfile>=0.12
+opencv-python-headless>=4.9  # fast affine warps for Ken Burns motion (Apache-2.0)
+kokoro-onnx>=0.4             # Kokoro-82M TTS (Apache-2.0) via ONNX Runtime, CPU only
+imageio-ffmpeg>=0.5          # bundled static FFmpeg for machines without a system FFmpeg
+tzdata>=2024.1               # timezone data for zoneinfo on Windows
+google-auth>=2.30
+google-auth-oauthlib>=1.2
+google-api-python-client>=2.130
+
+# Dev / test
+pytest>=8.0

@@ -1,0 +1,221 @@
+"""Unit tests for the safety-critical logic: evidence matching, claim verification, QC number
+checks, the task queue, quota caps, secret redaction and TTS text normalisation."""
+import json
+import sqlite3
+
+import pytest
+
+from ytengine import textutil
+
+
+# ------------------------------------------------------------------ evidence matching
+SRC = ('the presumption that you needed to get big fast, which worked for Amazon.com and virtually '
+       'no one else," commented Gartner analyst Whit Andrews')
+
+
+def test_exact_quote_matches_ignoring_punctuation():
+    assert textutil.evidence_match("which worked for Amazon.com, and virtually no-one else", SRC) == 1.0
+
+
+def test_paraphrased_quote_is_rejected():
+    assert textutil.evidence_match("It worked for Amazon.com and virtually no one else", SRC) < 0.95
+
+
+def test_invented_quote_is_rejected():
+    assert textutil.evidence_match("Pets.com spent $11.5 million on a single Super Bowl ad", SRC) < 0.5
+
+
+def test_sentence_split_keeps_abbreviations():
+    assert textutil.sentences("Mr. Smith left. The U.S. grew 3%. Done!") == \
+        ["Mr. Smith left.", "The U.S. grew 3%.", "Done!"]
+
+
+def test_similarity():
+    a = "the nasdaq peaked in march and then fell sharply over two years"
+    assert textutil.script_similarity(a, a) == 1.0
+    assert textutil.script_similarity(a, "completely different words about railways in eighteen forty") == 0.0
+
+
+# ------------------------------------------------------------------ claim verification
+@pytest.fixture()
+def corpus():
+    from ytengine import sources
+    from ytengine.agents.fact_check import Corpus
+    c = Corpus()
+    c.docs["https://en.wikipedia.org/wiki/X"] = sources.Document(
+        "https://en.wikipedia.org/wiki/X", "wikipedia.org", 3, "X",
+        "On Friday March 10, 2000, the NASDAQ Composite stock market index peaked at 5,048.62.")
+    c.docs["https://www.theguardian.com/y"] = sources.Document(
+        "https://www.theguardian.com/y", "theguardian.com", 2, "Y",
+        "By October 2002, it had plunged to 1114.11, a total loss of 78% against its peak.")
+    c.series["NASDAQCOM"] = [("2000-03-09", 4900.0), ("2000-03-10", 5048.62), ("2002-10-09", 1114.11)]
+    return c
+
+
+def _claim(ref, text, evidence, typ="number"):
+    return {"ref": ref, "text": text, "type": typ, "evidence": evidence}
+
+
+def test_verify_claims_statuses(conn, topic_video, corpus):
+    from ytengine.agents import fact_check as fc
+    for url, d in corpus.docs.items():
+        fc._upsert_source(conn, url, d.title, d.publisher, d.tier, d.sha256, d.text)
+    from ytengine import sources
+    fc._upsert_source(conn, sources.fred_url("NASDAQCOM"), "FRED", "stlouisfed.org", 1, None, "")
+    proposed = [
+        _claim("C1", "On March 10, 2000, the Nasdaq peaked at 5,048.62.", [
+            {"kind": "text", "url": "https://en.wikipedia.org/wiki/X",
+             "quote": "the NASDAQ Composite stock market index peaked at 5,048.62"},
+            {"kind": "data_point", "series": "NASDAQCOM", "date": "2000-03-10", "value": 5048.62}]),
+        _claim("C2", "The Nasdaq lost 78% by October 2002.", [
+            {"kind": "text", "url": "https://www.theguardian.com/y",
+             "quote": "By October 2002, it had plunged to 1114.11, a total loss of 78% against its peak."}]),
+        _claim("C3", "The Nasdaq lost 87% by October 2002.", [
+            {"kind": "text", "url": "https://www.theguardian.com/y",
+             "quote": "By October 2002, it had plunged to 1114.11, a total loss of 78% against its peak."}]),
+        _claim("C4", "Invented.", [{"kind": "text", "url": "https://www.theguardian.com/y",
+                                     "quote": "a sentence that does not exist anywhere in the source"}], "event"),
+        _claim("C5", "Peak at 5,100.", [{"kind": "data_point", "series": "NASDAQCOM", "date": "2000-03-10",
+                                          "value": 5100}]),
+        _claim("C6", "Fell 77.9% from peak to trough.", [{"kind": "data_change", "series": "NASDAQCOM",
+                                                          "from": "2000-03-10", "to": "2002-10-09", "pct": -77.9}]),
+    ]
+    stats = fc.verify_claims(conn, topic_video, proposed, corpus)
+    status = {r["ref"]: r["status"] for r in conn.execute("SELECT ref, status FROM claims")}
+    assert status["C1"] == "verified"        # tier-1 data + text
+    assert status["C2"] == "unverified"      # single publisher, tier 2
+    assert status["C3"] == "rejected"        # number not in evidence
+    assert status["C4"] == "rejected"        # quote not in source
+    assert status["C5"] == "rejected"        # data mismatch
+    assert status["C6"] == "verified"        # data change matches
+    assert stats["verified"] == 2
+
+
+def test_weekend_date_uses_previous_observation():
+    from ytengine.agents.fact_check import _series_value
+    assert _series_value([("2000-03-10", 1.0), ("2000-03-13", 2.0)], "2000-03-12") == ("2000-03-10", 1.0)
+
+
+# ------------------------------------------------------------------ script QC
+def _script(text, claims, scene=None):
+    return {"title_working": "t", "acts": [{"name": f"A{i}", "paragraphs": [
+        {"text": text if i == 0 else "Plain words here.", "claims": claims if i == 0 else [],
+         "scene": scene or {"type": "card", "spec": {"style": "title", "big": "X"}}}]} for i in range(3)]}
+
+
+def _store(conn, vid, script):
+    from ytengine.agents import scriptwriter
+    body = scriptwriter.render_body(script)
+    conn.execute("INSERT INTO scripts(video_id, version, outline_json, body, word_count, est_duration_s) "
+                 "VALUES (?,?,?,?,?,?)", (vid, 1, json.dumps(script), body,
+                                          textutil.words(scriptwriter.narration_text(script)), 60))
+
+
+def _verified_claim(conn, vid):
+    conn.execute("INSERT INTO claims(video_id, ref, text, claim_type, status) VALUES (?,?,?,?,?)",
+                 (vid, "C1", "The Nasdaq peaked at 5,048.62 in 2000.", "number", "verified"))
+
+
+def test_script_gate_passes_supported_numbers(conn, topic_video):
+    from ytengine.agents import qc
+    _verified_claim(conn, topic_video)
+    _store(conn, topic_video, _script("In 2000 the Nasdaq peaked at 5,048.62.", ["C1"]))
+    rep = qc.script_gate(conn, topic_video)
+    assert rep.passed, rep.failures()
+
+
+def test_script_gate_rejects_unsupported_number(conn, topic_video):
+    from ytengine.agents import qc
+    _verified_claim(conn, topic_video)
+    _store(conn, topic_video, _script("In 2000 the Nasdaq peaked at 6,000.", ["C1"]))
+    rep = qc.script_gate(conn, topic_video)
+    assert not rep.passed
+    assert any("narration_numbers_supported" in f for f in rep.failures())
+
+
+def test_script_gate_rejects_uncited_fact(conn, topic_video):
+    from ytengine.agents import qc
+    _store(conn, topic_video, _script("In 2000 the Nasdaq peaked.", []))
+    assert not qc.script_gate(conn, topic_video).passed
+
+
+def test_script_gate_rejects_onscreen_number(conn, topic_video):
+    from ytengine.agents import qc
+    _verified_claim(conn, topic_video)
+    scene = {"type": "card", "spec": {"style": "number", "big": "-90%"}}
+    _store(conn, topic_video, _script("In 2000 the Nasdaq peaked at 5,048.62.", ["C1"], scene))
+    assert not qc.script_gate(conn, topic_video).passed
+
+
+def test_script_gate_rejects_advice(conn, topic_video):
+    from ytengine.agents import qc
+    _store(conn, topic_video, _script("You should buy index funds now.", []))
+    rep = qc.script_gate(conn, topic_video)
+    assert any("no_financial_advice" in f for f in rep.failures())
+
+
+# ------------------------------------------------------------------ task queue
+def test_enqueue_is_idempotent(conn):
+    from ytengine import db
+    assert db.enqueue(conn, "video:1:render:v1", "render") is not None
+    assert db.enqueue(conn, "video:1:render:v1", "render") is None
+    assert conn.execute("SELECT COUNT(*) FROM tasks").fetchone()[0] == 1
+
+
+def test_fail_backs_off_then_dies(conn):
+    from ytengine import db
+    db.enqueue(conn, "k", "x", max_attempts=2)
+    t = db.claim(conn)
+    assert db.fail(conn, t["id"], "boom") == "pending"
+    conn.execute("UPDATE tasks SET next_run_at='2000-01-01T00:00:00Z'")
+    t = db.claim(conn)
+    assert db.fail(conn, t["id"], "boom again") == "dead"
+    assert db.claim(conn) is None
+
+
+def test_reclaim_stale_lease(conn):
+    from ytengine import db
+    db.enqueue(conn, "k", "x")
+    db.claim(conn)
+    conn.execute("UPDATE tasks SET lease_until='2000-01-01T00:00:00Z'")
+    assert db.reclaim_stale(conn) == 1
+    assert db.claim(conn) is not None
+
+
+# ------------------------------------------------------------------ quota
+def test_quota_hard_cap(conn):
+    from ytengine import quota
+    quota.consume(conn, "gemini:test", 5, cap=10)
+    quota.consume(conn, "gemini:test", 5, cap=10)
+    with pytest.raises(quota.QuotaExceeded):
+        quota.consume(conn, "gemini:test", 1, cap=10)
+
+
+def test_expense_requires_approval(conn):
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute("INSERT INTO expenses(month, item, amount_usd) VALUES ('2026-11','vps',5)")
+
+
+# ------------------------------------------------------------------ redaction
+def test_redaction(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "AIzaSyTESTKEY1234567890abcdefghijklmnop")
+    from ytengine.log import redact
+    out = redact("call failed key=AIzaSyTESTKEY1234567890abcdefghijklmnop and Bearer abc "
+                 "token ghp_abcdefghijklmnopqrstuvwxyz0123456789")
+    assert "AIzaSy" not in out and "ghp_" not in out
+
+
+# ------------------------------------------------------------------ TTS normalisation
+def test_speakable():
+    from ytengine.agents.voice import speakable
+    s = speakable('On March 10, 2000, it fell 9.7% to $164 billion in Super Bowl XXXIV. "Quote".')
+    assert "March tenth, two thousand" in s
+    assert "9.7 percent" in s and "164 billion dollars" in s and "thirty-four" in s and '"' not in s
+    assert speakable("In 1995 and 1907") == "In nineteen ninety-five and nineteen oh seven"
+
+
+def test_captions_chunking():
+    from ytengine.render.captions import cues
+    out = cues([{"text": "word " * 30, "start": 0.0, "end": 6.0}])
+    assert all(len(line) <= 42 for _, _, t in out for line in t.split("\n"))
+    assert abs(out[-1][1] - 6.0) < 1e-6

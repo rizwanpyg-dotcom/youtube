@@ -1,0 +1,44 @@
+name: control
+
+# Applies owner commands written as issue comments (/approve, /reject, /pause, ...).
+# SECURITY: this is a public repository, so anyone can comment. The job only runs for the
+# repository OWNER (checked here AND again in Python), never checks out code from a fork,
+# and doesn't expose secrets other than the built-in token.
+on:
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: state-db
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  command:
+    if: >-
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, '/') &&
+      !github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      YT_DB_PATH: youtube_automation.db
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      ISSUE_TITLE: ${{ github.event.issue.title }}
+      COMMENT_BODY: ${{ github.event.comment.body }}
+      AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: ./.github/actions/setup
+        with:
+          models: "false"
+      - name: Apply command
+        run: python -m ytengine control
+      - name: Save pipeline state
+        run: bash scripts/state.sh push

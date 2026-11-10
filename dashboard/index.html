@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Channel Control Room</title>
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>Channel Control Room</h1>
+      <p class="sub" id="generated">Loading…</p>
+    </div>
+    <nav class="actions" id="actions"></nav>
+  </header>
+
+  <nav class="tabs" id="tabs" role="tablist"></nav>
+
+  <main>
+    <section data-tab="Overview" class="tab">
+      <div class="tiles" id="tiles"></div>
+      <div class="grid2">
+        <div class="card"><h2>Monetization progress (YPP)</h2><div id="ypp"></div>
+          <p class="note">Requirements as reported for Pakistan: 1,000 subscribers plus 4,000 public watch hours (12 months) or 10M Shorts views (90 days). Watch hours here include all content, so they approximate the official figure. No earnings are promised.</p></div>
+        <div class="card"><h2>Health</h2><div id="health"></div></div>
+      </div>
+      <div class="card"><h2>Waiting for you</h2><div id="waiting"></div></div>
+    </section>
+
+    <section data-tab="Pipeline" class="tab">
+      <div class="card"><h2>Production board</h2><div id="kanban" class="kanban"></div></div>
+      <div class="card"><h2>Scripts</h2><div id="scripts"></div></div>
+      <div class="card"><h2>Quality control (latest per gate)</h2><div id="qc"></div></div>
+    </section>
+
+    <section data-tab="Calendar" class="tab">
+      <div class="card"><h2>Content calendar</h2><div id="calendar"></div></div>
+    </section>
+
+    <section data-tab="Research" class="tab">
+      <div class="card"><h2>Topic research queue</h2><div id="research"></div></div>
+      <div class="card"><h2>Niche evidence</h2><div id="niche"></div></div>
+    </section>
+
+    <section data-tab="Performance" class="tab">
+      <div class="card"><h2>Subscribers</h2><div id="chart-subs" class="chart"></div></div>
+      <div class="card"><h2>Videos</h2><div id="performance"></div></div>
+      <div class="grid2">
+        <div class="card"><h2>What the system has learned</h2><div id="insights"></div></div>
+        <div class="card"><h2>Strategy arms</h2><div id="strategy"></div></div>
+      </div>
+    </section>
+
+    <section data-tab="Operations" class="tab">
+      <div class="card"><h2>Failed tasks</h2><div id="failed"></div></div>
+      <div class="grid2">
+        <div class="card"><h2>API usage (14 days)</h2><div id="api"></div></div>
+        <div class="card"><h2>Monthly operating cost</h2><div id="costs"></div></div>
+      </div>
+      <div class="card"><h2>Workflow runs</h2><div id="runs"></div></div>
+      <div class="card"><h2>Render resource use</h2><div id="render"></div></div>
+      <div class="card"><h2>Approval history</h2><div id="approvals"></div></div>
+    </section>
+  </main>
+
+  <footer>Data refreshes on every pipeline run. Controls work by commenting on GitHub issues, and only the repository owner is obeyed.</footer>
+  <script src="app.js"></script>
+</body>
+</html>

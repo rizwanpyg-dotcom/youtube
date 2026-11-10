@@ -1,0 +1,12 @@
+{
+  "titles": [
+    {"text": "The Dot-com Bubble: How \"Get Big Fast\" Ended in a 78% Crash", "pattern": "how-why"},
+    {"text": "5,048.62: The Number That Ended the Dot-com Boom", "pattern": "number-led"},
+    {"text": "Why Did the Nasdaq Lose 78% After March 2000?", "pattern": "story-question"}
+  ],
+  "summary": "On March 10, 2000, the Nasdaq Composite peaked at 5,048.62. By October 2002 it had lost 78%. This short documentary traces how the dot-com era's \"get big fast\" strategy met reality, using daily Nasdaq data and contemporary reporting.",
+  "tags": ["dot-com bubble", "dot com crash", "nasdaq 2000", "stock market crash", "pets.com", "webvan",
+           "economic history", "tech bubble", "get big fast", "market bubbles explained", "2000 stock market",
+           "business history documentary"],
+  "thumbnail": {"big": "-78%", "label": "Dot-com crash", "series": "NASDAQCOM", "range": ["1997-01-01", "2002-12-31"]}
+}

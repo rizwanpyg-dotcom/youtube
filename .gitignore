@@ -1,0 +1,27 @@
+# Secrets: never commit
+.env
+*.env
+client_secret*.json
+token*.json
+credentials*.json
+*.pem
+*.key
+
+# Runtime state and media (the DB lives on the `state` branch, media is ephemeral)
+youtube_automation.db*
+work/
+output/
+models/
+*.mp4
+*.wav
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local tooling and generated output
+.claude/
+site/
+backups/

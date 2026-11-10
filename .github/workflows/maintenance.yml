@@ -1,0 +1,75 @@
+name: maintenance
+
+# Analytics (daily), watchdog (every 6 h), market research (monthly), backups (daily + weekly).
+on:
+  schedule:
+    - cron: "40 */6 * * *"     # watchdog
+    - cron: "5 6 * * *"        # analytics + learning loop, daily backup
+    - cron: "25 3 * * 0"       # weekly backup (kept 12 weeks)
+    - cron: "45 4 1 * *"       # market research, monthly
+  workflow_dispatch:
+    inputs:
+      task:
+        description: watchdog | analytics | backup | market
+        default: watchdog
+
+concurrency:
+  group: state-db
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      YT_DB_PATH: youtube_automation.db
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+      YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+      YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+      TASK: >-
+        ${{ github.event.inputs.task
+            || (github.event.schedule == '40 */6 * * *' && 'watchdog')
+            || (github.event.schedule == '5 6 * * *' && 'analytics')
+            || (github.event.schedule == '25 3 * * 0' && 'backup-weekly')
+            || (github.event.schedule == '45 4 1 * *' && 'market') }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+      - uses: ./.github/actions/setup
+        with:
+          models: "false"
+      - name: Run ${{ env.TASK }}
+        run: |
+          case "$TASK" in
+            watchdog)  python -m ytengine watchdog ;;
+            analytics) python -m ytengine analytics; python -m ytengine watchdog ;;
+            market)    python -m ytengine market ;;
+            backup|backup-weekly) true ;;
+            *) echo "unknown task $TASK"; exit 2 ;;
+          esac
+      - name: Backup database to a release
+        if: env.TASK == 'analytics' || env.TASK == 'backup' || env.TASK == 'backup-weekly'
+        run: |
+          f=$(python -m ytengine backup --out backups | tail -1)
+          if [ "$TASK" = "backup-weekly" ]; then
+            tag="db-backup-$(date -u +%G-W%V)"
+            gh release create "$tag" "$f" --title "$tag" --notes "Weekly database snapshot" --latest=false || \
+              gh release upload "$tag" "$f" --clobber
+            # keep the newest 12 weekly backups
+            gh release list --limit 100 --json tagName -q '.[].tagName' | grep '^db-backup-' | sort -r | tail -n +13 | \
+              xargs -r -I{} gh release delete {} --yes --cleanup-tag
+          else
+            tag="db-daily"
+            gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --title "Daily DB snapshots" \
+              --notes "Rolling 7-day snapshots (one per weekday)" --latest=false
+            cp "$f" "backups/daily-$(date -u +%a).db.gz"
+            gh release upload "$tag" "backups/daily-$(date -u +%a).db.gz" --clobber
+          fi
+      - name: Save pipeline state
+        if: always()
+        run: bash scripts/state.sh push

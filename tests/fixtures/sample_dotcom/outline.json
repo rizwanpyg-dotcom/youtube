@@ -1,0 +1,10 @@
+{
+  "hook": "Open on the single number 5,048.62 and the date it was set.",
+  "acts": [
+    {"name": "The Number", "purpose": "Peak, the climb, the fall in three data points", "claims": ["C1", "C2", "C3", "C4", "C5"]},
+    {"name": "Get Big Fast", "purpose": "The strategy and its showcase moments", "claims": ["C7", "C9", "C15"]},
+    {"name": "The Unwind", "purpose": "How the fall played out, company by company", "claims": ["C6", "C11", "C12", "C13", "C17"]},
+    {"name": "The Lesson", "purpose": "What the survivors and the data say", "claims": ["C8", "C1"]}
+  ],
+  "closing_idea": "Booms always believe this time is different; the 2000 chart says otherwise."
+}

@@ -1,0 +1,9 @@
+{
+  "titles": [
+    {"text": "The Nasdaq Hit 5,048.62. Then It Lost 78%.", "pattern": "number-led"},
+    {"text": "How Did the Dot-com Boom End?", "pattern": "story-question"}
+  ],
+  "summary": "On March 10, 2000, the Nasdaq peaked at 5,048.62; by October 2002 it had lost 78%. A 50-second look at the dot-com crash. The full documentary is on the channel.",
+  "tags": ["dot-com bubble", "nasdaq", "stock market crash", "pets.com", "economic history", "shorts"],
+  "thumbnail": {"big": "-78%", "label": "Dot-com crash", "series": "NASDAQCOM", "range": ["1999-01-01", "2002-12-31"]}
+}

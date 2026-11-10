@@ -1,0 +1,54 @@
+{
+  "name": "ytengine schedule (optional, for a future always-on VPS)",
+  "nodes": [
+    {
+      "parameters": {"rule": {"interval": [{"field": "hours", "hoursInterval": 4}]}},
+      "name": "Every 4 hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {"command": "cd /opt/ytengine && .venv/bin/python -m ytengine cycle && .venv/bin/python -m ytengine export-dashboard --out /var/www/ytengine"},
+      "name": "Pipeline cycle",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [260, 0]
+    },
+    {
+      "parameters": {"rule": {"interval": [{"field": "hours", "hoursInterval": 6}]}},
+      "name": "Every 6 hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 200]
+    },
+    {
+      "parameters": {"command": "cd /opt/ytengine && .venv/bin/python -m ytengine watchdog"},
+      "name": "Watchdog",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [260, 200]
+    },
+    {
+      "parameters": {"rule": {"interval": [{"field": "cronExpression", "expression": "5 6 * * *"}]}},
+      "name": "Daily 06:05",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 400]
+    },
+    {
+      "parameters": {"command": "cd /opt/ytengine && .venv/bin/python -m ytengine analytics && .venv/bin/python -m ytengine backup --out /var/backups/ytengine"},
+      "name": "Analytics + backup",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [260, 400]
+    }
+  ],
+  "connections": {
+    "Every 4 hours": {"main": [[{"node": "Pipeline cycle", "type": "main", "index": 0}]]},
+    "Every 6 hours": {"main": [[{"node": "Watchdog", "type": "main", "index": 0}]]},
+    "Daily 06:05": {"main": [[{"node": "Analytics + backup", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {"note": "Not used by the $0 GitHub Actions deployment. Import only if you later run ytengine on a VPS (requires owner approval for any cost). The Execute Command node must be enabled on self-hosted n8n."}
+}

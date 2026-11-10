@@ -1,0 +1,25 @@
+# Generic AI-filler phrases the scriptwriter must never use (case-insensitive substring match).
+delve
+in today's video
+buckle up
+let's dive in
+dive deep
+tapestry
+in the ever-evolving
+a testament to
+game-changer
+game changer
+smash that like
+don't forget to subscribe
+without further ado
+little did they know
+it's important to note
+in conclusion
+unleash
+navigating the
+rich history
+stay tuned
+you won't believe
+shocking truth
+mind-blowing
+journey through time

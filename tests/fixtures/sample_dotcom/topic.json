@@ -1,0 +1,16 @@
+{
+  "slug": "dot-com-bubble-2000",
+  "title": "The Dot-com Bubble",
+  "category": "tech-bubble",
+  "era": "1995-2002",
+  "region": "United States",
+  "angle": "How 'get big fast' turned into a 78% wipeout, told through the Nasdaq's own daily data",
+  "format": "long",
+  "publish_slot": "2026-11-17T14:00:00Z",
+  "target_words": [380, 650],
+  "research_plan": {
+    "wikipedia": ["Dot-com bubble"],
+    "fred": [{"series": "NASDAQCOM", "start": "1995-01-01", "end": "2004-12-31"}],
+    "keywords": ["dot-com", "nasdaq", "pets.com", "bubble", "internet", "ipo", "microstrategy", "webvan"]
+  }
+}
