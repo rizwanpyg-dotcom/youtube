@@ -88,6 +88,16 @@ def _claim_nums(text: str) -> list[float]:
     return _nums(text) + [float(_WORD_NUMS[w]) for w in words if w in _WORD_NUMS]
 
 
+def _is_term(quoted: str, claim_texts: str) -> bool:
+    """A quoted name, term or title rather than speech: at most 3 words, or a Title-Case span
+    that appears verbatim in the cited claims."""
+    q = quoted.strip(" .,;:!?")
+    if len(q.split()) <= 3:
+        return True
+    title_case = sum(w[:1].isupper() for w in q.split()) >= 0.5 * len(q.split())
+    return title_case and q.lower() in claim_texts.lower()
+
+
 def _covered(n: float, allowed: list[float]) -> bool:
     return any(abs(n - a) < 1e-9 for a in allowed)
 
@@ -101,6 +111,9 @@ def script_gate(conn: sqlite3.Connection, video_id: int, series: dict | None = N
     lo, hi = scriptwriter.target_words(conn, video_id)
     wc = row["word_count"]
     r.add("word_count", lo <= wc <= hi, f"{wc} words (target {lo}-{hi})", 2)
+    # Small misses are fine; a script far outside the target is a different video (e.g. 3 min not 10).
+    r.add("word_count_in_range", 0.85 * lo <= wc <= 1.15 * hi,
+          f"{wc} words (allowed {int(0.85 * lo)}-{int(1.15 * hi)})", 3, hard=True)
 
     bad_refs, uncited, unsupported_nums, bad_conflict, bad_quotes, screen_nums = [], [], [], [], [], []
     misquotes: list[str] = []
@@ -123,7 +136,12 @@ def script_gate(conn: sqlite3.Connection, video_id: int, series: dict | None = N
             for n in nums:
                 if not _covered(n, allowed):
                     unsupported_nums.append(f"P{i+1}:{n:g}")
-        if '"' in p["text"] or "“" in p["text"]:
+        # Attribution is required for quotations of what someone said or wrote, not for quoted
+        # terms, nicknames or titles ("Beau", "millionaire", a pamphlet's title) taken from a claim.
+        claim_texts = " ".join(claims[ref]["text"] for ref in refs if ref in claims)
+        speech = [q for q in re.findall(r"[\"“]([^\"”]+)[\"”]", p["text"])
+                  if not _is_term(q, claim_texts)]
+        if speech:
             has_quote_claim = any(claims.get(ref, {}) and claims[ref]["claim_type"] == "quote" for ref in refs)
             if not (has_quote_claim and _ATTRIB.search(p["text"])):
                 bad_quotes.append(f"P{i+1}")

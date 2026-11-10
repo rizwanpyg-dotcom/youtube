@@ -366,3 +366,12 @@ def test_inline_citation_markers_are_not_spoken_or_counted():
 def test_spelled_out_claim_numbers_support_digits():
     from ytengine.agents import qc
     assert 10.0 in qc._claim_nums("Law closed the bank for ten days.")
+
+
+def test_quoted_terms_and_titles_are_not_speech():
+    from ytengine.agents import qc
+    claim = 'In 1705 Law wrote a pamphlet titled "Money and Trade Considered: with a Proposal for Supplying the Nation with Money".'
+    assert qc._is_term("Beau", "")
+    assert qc._is_term("millionaire", "")
+    assert qc._is_term("Money and Trade Considered: with a Proposal for Supplying the Nation with Money", claim)
+    assert not qc._is_term("we will pay every note in silver on demand", claim)  # a real quotation
