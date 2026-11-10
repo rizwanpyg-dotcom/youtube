@@ -41,6 +41,7 @@ def run(conn, budget_s: int = TIME_BUDGET_S) -> dict:
             rec.finish("success", "paused")
             return summary
 
+        _repair_2026_11_10(conn)
         last = db.get_setting(conn, "last_topic_research", "2000-01-01T00:00:00Z")
         force = os.environ.get("YT_FORCE_RESEARCH") == "1"
         if topics.backlog(conn) < 10 and _llm_available() and (force or _hours_since(last) > 20):
@@ -88,6 +89,18 @@ def run(conn, budget_s: int = TIME_BUDGET_S) -> dict:
         rec.finish("failure", f"{type(e).__name__}: {e}")
         raise
     return summary
+
+
+def _repair_2026_11_10(conn) -> None:
+    """One-time: topics rejected by the keyword-phrase bug (fixed 2026-11-10) get another chance."""
+    if db.get_setting(conn, "repair_2026_11_10"):
+        return
+    n = conn.execute("UPDATE topics SET status='candidate', rejection_reason=NULL WHERE status='rejected' "
+                     "AND rejection_reason LIKE 'insufficient evidence:%' AND created_at < '2026-11-10T08:00:00Z'"
+                     ).rowcount
+    db.set_setting(conn, "repair_2026_11_10", True)
+    if n:
+        log.info("re-opened %d topic(s) rejected by the fixed source-filter bug", n)
 
 
 def _hours_since(ts: str) -> float:

@@ -232,12 +232,24 @@ def wikipedia_references(title: str, limit: int = 500) -> list[str]:
     return [l for l in links if l.startswith("http") and not any(s in l for s in _SKIP_LINK)]
 
 
+# Library catalogue / identifier / search pages: an official domain, but no citable content.
+_CATALOG = re.compile(
+    r"id\.loc\.gov|lccn\.loc\.gov|catalog\.loc\.gov|lux\.collections\.yale\.edu|worldcat\.org|"
+    r"jstor\.org/stable|/findingaids?/|catalog\.hathitrust|search\.worldcat|viaf\.org|isni\.org|"
+    r"books\.google\.|openlibrary\.org|/search\?|doi\.org/|catalogue\.bnf\.fr|d-nb\.info|"
+    r"data\.bnf\.fr|wikidata\.org", re.I)
+
+
+def is_catalog(url: str) -> bool:
+    return bool(_CATALOG.search(original_url(url)))
+
+
 def rank_references(urls: list[str]) -> list[str]:
-    """Prefer higher tiers, originals over archives, one URL per original."""
+    """Prefer higher tiers, originals over archives, one URL per original; drop catalogue pages."""
     seen, out = set(), []
     for u in sorted(urls, key=lambda u: (tier(u), "web.archive.org" in u)):
         o = original_url(u)
-        if o in seen:
+        if o in seen or is_catalog(u):
             continue
         seen.add(o)
         out.append(u)

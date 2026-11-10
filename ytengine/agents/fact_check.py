@@ -48,7 +48,8 @@ def gather(conn: sqlite3.Connection, video_id: int, plan: dict) -> Corpus:
     """plan = {"wikipedia": [titles], "fred": [{"series","start","end"}], "extra_urls": [...],
                "keywords": [...]}"""
     corpus = Corpus()
-    kw = {k.lower() for k in plan.get("keywords", [])}
+    # Keywords may be phrases ("Assignat hyperinflation"); match their individual words.
+    kw = textutil.keywords(" ".join(plan.get("keywords", [])))
     for title in plan.get("wikipedia", []):
         doc = sources.wikipedia(title)
         corpus.docs[doc.url] = doc
@@ -68,7 +69,8 @@ def gather(conn: sqlite3.Connection, video_id: int, plan: dict) -> Corpus:
     for url in plan.get("extra_urls", []):
         try:
             d = sources.fetch_document_or_archive(url)
-            if not kw or sum(1 for k in kw if k in d.text.lower()) >= 2:  # discard wrong/irrelevant URLs
+            if (not kw or sum(1 for k in kw if k in d.text.lower()) >= 2) and len(d.text) >= 800:
+                # wrong/irrelevant URLs are discarded
                 corpus.docs[url] = d
         except Exception as e:
             log.info("extra source unavailable %s: %s", url, e)
@@ -80,8 +82,9 @@ def gather(conn: sqlite3.Connection, video_id: int, plan: dict) -> Corpus:
     for s in corpus.series:
         _upsert_source(conn, sources.fred_url(s), f"FRED series {s}", "stlouisfed.org", 1, None,
                        f"Federal Reserve Bank of St. Louis, FRED series {s}")
-    log.info("gathered %d documents, %d data series (publishers: %s)", len(corpus.docs), len(corpus.series),
-             sorted({d.publisher for d in corpus.docs.values()}))
+    pubs = sorted({d.publisher for d in corpus.docs.values()})
+    (log.warning if len(pubs) < 3 else log.info)(
+        "gathered %d documents, %d data series (publishers: %s)", len(corpus.docs), len(corpus.series), pubs)
     return corpus
 
 

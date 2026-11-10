@@ -285,3 +285,43 @@ def test_failed_topic_research_retries_within_hours(conn, monkeypatch):
     assert any("topic research" in e for e in summary["errors"])
     hours = cycle._hours_since(dbm.get_setting(conn, "last_topic_research"))
     assert 16 < hours < 18   # gate is >20 h, so research is retried ~3-4 h later, not 20 h
+
+
+# ------------------------------------------------------------------ source filtering (2026-11-10 cloud run)
+def test_catalog_pages_are_not_references():
+    from ytengine import sources
+    urls = ["https://id.loc.gov/authorities/sh85008786", "https://www.jstor.org/stable/2122576",
+            "https://lux.collections.yale.edu/view/concept/5cc",
+            "https://www.lib.uchicago.edu/e/scrc/findingaids/view.php?eadid=X",
+            "https://www.imf.org/external/np/speeches/1998/032098.htm"]
+    assert sources.rank_references(urls) == ["https://www.imf.org/external/np/speeches/1998/032098.htm"]
+
+
+def test_phrase_keywords_match_by_word(monkeypatch, conn):
+    """LLM keywords are phrases; a relevant document must not be discarded for lacking the exact phrase."""
+    from ytengine import sources
+    from ytengine.agents import fact_check
+    body = ("The assignats were paper money issued during the French Revolution, backed by confiscated "
+            "church lands. Over-issue produced hyperinflation. ") * 30
+    wiki = sources.Document("https://en.wikipedia.org/wiki/Assignat", "wikipedia.org", 3, "Assignat", body)
+    ref = sources.Document("https://www.britannica.com/topic/assignat", "britannica.com", 2, "Assignat", body)
+    monkeypatch.setattr(sources, "wikipedia", lambda t: wiki)
+    monkeypatch.setattr(sources, "wikipedia_references", lambda t: [])
+    monkeypatch.setattr(sources, "fetch_document_or_archive", lambda u, **k: ref)
+    plan = {"wikipedia": ["Assignat"], "keywords": ["Assignat hyperinflation", "church land confiscation"],
+            "extra_urls": ["https://www.britannica.com/topic/assignat"]}
+    corpus = fact_check.gather(conn, 0, plan)
+    assert "https://www.britannica.com/topic/assignat" in corpus.docs
+
+
+def test_repair_reopens_bug_rejected_topics(conn):
+    from ytengine import cycle, db as dbm
+    conn.execute("INSERT INTO topics(slug, fingerprint, title, category, status, rejection_reason, created_at) VALUES "
+                 "('a','a','A','bank-panic','rejected','insufficient evidence: x','2026-11-10T06:00:00Z'),"
+                 "('b','b','B','bank-panic','rejected','owner rejected','2026-11-10T06:00:00Z')")
+    cycle._repair_2026_11_10(conn)
+    st = dict(conn.execute("SELECT slug, status FROM topics").fetchall())
+    assert st == {"a": "candidate", "b": "rejected"}
+    conn.execute("UPDATE topics SET status='rejected', rejection_reason='insufficient evidence: y' WHERE slug='a'")
+    cycle._repair_2026_11_10(conn)  # runs once only
+    assert conn.execute("SELECT status FROM topics WHERE slug='a'").fetchone()[0] == "rejected"

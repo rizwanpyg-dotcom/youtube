@@ -102,7 +102,10 @@ def stage_research(conn, video_id) -> dict:
     if not gate.passed:
         # Not enough verifiable evidence is a property of the topic, not a transient error:
         # retire it at once instead of re-fetching the same sources three times.
-        reason = "insufficient evidence: " + "; ".join(gate.failures())
+        st = result["stats"]
+        reason = ("insufficient evidence: " + "; ".join(gate.failures()) +
+                  f" [{st.get('documents', 0)} documents from {len(st.get('publishers', []))} publishers: "
+                  f"{', '.join(st.get('publishers', [])[:8])}]")
         conn.execute("UPDATE topics SET status='rejected', rejection_reason=? WHERE id=?",
                      (reason, db.video(conn, video_id)["topic_id"]))
         conn.execute("UPDATE videos SET status='rejected', last_error=? WHERE id=?", (reason[:500], video_id))
