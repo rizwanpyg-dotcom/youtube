@@ -73,9 +73,14 @@ def write(conn: sqlite3.Connection, video_id: int, feedback: str | None = None) 
 Open with the single most striking verified number or fact in the first sentence. 2-4 paragraphs, one scene each.
 End with: "The full story is on the channel."
 {scriptwriter._style_rules()}
-Scenes as in the long-form (card/chart); charts are shown vertically, so keep them simple.
+Each paragraph is one on-screen scene (6-20 seconds). Scene types (shown vertically, keep simple):
+ card:  {{"style": "number|statement|quote|title", "eyebrow": str, "big": str, "small": str}}
+ chart: {{"series": FRED id, "start": "YYYY-MM-DD", "end": "YYYY-MM-DD", "title": str, "subtitle": str,
+          "highlights": [{{"date": "YYYY-MM-DD", "label": str}}], "source": str}}
+On-screen text may only contain numbers from the paragraph's claims.
 {"Reviewer feedback to address: " + feedback if feedback else ""}
-Return {{"title_working": str, "acts": [{{"name": str, "paragraphs": [{{"text", "claims", "scene"}}]}}]}}
+Return {{"title_working": str, "acts": [{{"name": str, "paragraphs": [{{"text": str, "claims": [refs],
+"scene": {{"type": "card|chart", "spec": {{...}}}}}}]}}]}}
 
 Claims:
 {claims}""", SHORT_SCHEMA, temperature=0.7)
